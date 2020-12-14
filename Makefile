@@ -2,10 +2,10 @@ CC=gcc
 
 .PHONY: clean
 
-all: mali-test
+all: malitest
 
-mali-test: mali-test.c
+malitest: malitest.c
 	$(CC) -Wall -o '$@' '$<' -lEGL -lGLESv2
 
 clean:
-	rm -f mali-test
+	rm -f malitest
