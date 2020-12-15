@@ -23,6 +23,8 @@
 
 /*
  * Hello triangle, adapted for native display on libMali.so.
+ * gcc -o test test.c -lEGL -lGLESv2
+ * make test -lEGL -lGLESv2
  */
 
 #include <stdlib.h>
@@ -35,15 +37,15 @@
 #define WIDTH 800
 #define HEIGHT 800
 
-#ifdef _X11_XLIB_H_
-Display *XDisplay;
-Window XWindow;
-#else
+struct mali_native_window {
+	unsigned short width;
+	unsigned short height;
+};
+
 struct mali_native_window native_window = {
 	.width = WIDTH,
 	.height = HEIGHT,
 };
-#endif
 
 static const char *vertex_shader_source =
 	"attribute vec4 aPosition;    \n"
@@ -130,33 +132,7 @@ main(int argc, char *argv[])
 	GLint ret;
 	GLint width, height;
 
-#ifdef _X11_XLIB_H_
-	XDisplay = XOpenDisplay(NULL);
-	if (!XDisplay) {
-		fprintf(stderr, "Error: failed to open X display.\n");
-		return -1;
-	}
-
-	Window XRoot = DefaultRootWindow(XDisplay);
-
-	XSetWindowAttributes XWinAttr;
-	XWinAttr.event_mask  =  ExposureMask | PointerMotionMask;
-
-	XWindow = XCreateWindow(XDisplay, XRoot, 0, 0, WIDTH, HEIGHT, 0,
-				CopyFromParent, InputOutput,
-				CopyFromParent, CWEventMask, &XWinAttr);
-
-	Atom XWMDeleteMessage =
-		XInternAtom(XDisplay, "WM_DELETE_WINDOW", False);
-
-	XMapWindow(XDisplay, XWindow);
-	XStoreName(XDisplay, XWindow, "Mali libs test");
-	XSetWMProtocols(XDisplay, XWindow, &XWMDeleteMessage, 1);
-
-	egl_display = eglGetDisplay((EGLNativeDisplayType) XDisplay);
-#else
 	egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-#endif /* _X11_XLIB_H_ */
 	if (egl_display == EGL_NO_DISPLAY) {
 		fprintf(stderr, "Error: No display found!\n");
 		return -1;
@@ -185,14 +161,9 @@ main(int argc, char *argv[])
 		return -1;
 	}
 
-#ifdef _X11_XLIB_H_
-	egl_surface = eglCreateWindowSurface(egl_display, config, XWindow,
-					     window_attribute_list);
-#else
 	egl_surface = eglCreateWindowSurface(egl_display, config,
 					     &native_window,
 					     window_attribute_list);
-#endif
 	if (egl_surface == EGL_NO_SURFACE) {
 		fprintf(stderr, "Error: eglCreateWindowSurface failed: "
 			"0x%08X\n", eglGetError());
@@ -307,23 +278,6 @@ main(int argc, char *argv[])
 	glEnableVertexAttribArray(1);
 
 	Redraw(width, height);
-
-#ifdef _X11_XLIB_H_
-	while (1) {
-		XEvent event;
-
-		XNextEvent(XDisplay, &event);
-
-		if ((event.type == MotionNotify) ||
-		    (event.type == Expose))
-			Redraw(width, height);
-		else if (event.type == ClientMessage) {
-			if (event.xclient.data.l[0] == XWMDeleteMessage)
-				break;
-		}
-	}
-	XSetWMProtocols(XDisplay, XWindow, &XWMDeleteMessage, 0);
-#endif
 
 	return 0;
 }
